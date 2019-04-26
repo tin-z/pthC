@@ -1,0 +1,286 @@
+#####	 Manuale d'uso PThc	 #####
+
+______________________________________
+
+|	Index 				
+
+	1. Package Management (under dev)
+
+	2. Trace
+		2.1 Automatic Mode
+		2.2 Manual Mode
+		2.3 Stop tracing
+		2.4 Output tracing
+
+	3. Test
+	
+	4. Perf - Intel pt
+______________________________________
+
+1. Package Management
+	supported also on ubuntu. tested on ubuntu 16.04
+
+	type:
+	./scripts/list_package.sh <name_program>
+
+	this will download the list of package's available on the security repo. (Packages.gz)
+	greping it and find what u need 
+
+	if all was right, will print the version software available to download and to compare.
+	follow the instructions printed.
+	it will takes some time to download/compile. in the end will print out the command to follow.
+	(wich will refer to section 2.)
+
+
+______________________________________
+
+2. Trace
+ the part of tracing the process is divided into two pieces.
+ type the command:
+
+ 	scala TakeCare < -c "command name"> < -p "command path" >  [ -P "pid to trace" ] [ -o name_file_log ]
+
+  2.1 Automatic Mode
+   in this mode scala will launch the process and allready sleep it.
+   next it will wait when you ready. so will print out you to launch one of those command
+ 	
+ 	sudo ./scripts/trace.sh <pid> 16384 60M <command path>
+ 
+   this command will trace with filtering the space address. if it dosn't work (e.g. 0.0% cod coverage)
+ 
+ 	sudo ./scripts/trace_without_filter.sh <pid> 16384 60M <command path>
+
+  2.2 Manual Mode
+   in this mode you have to trace a not conventional software (e.g scala TakeCare -c 1 -p ./test/1 )
+   
+  2.3 Stop tracing
+   to stop tracing, tip "b" on the scala interface. next wait till the other process (perf) ends.
+   if it dosnt stop, stop it manualy and next type: sudo ./scripts/trace_2.sh
+      
+   next turn back on scala interface, and continue.
+
+  2.4   Output tracing
+   the output , if all went right, will be:
+   	- outputfile{i}.txt list. which refers to the address jumped in from the trace (perf script ... > outputfile{i}.txt)
+   	- block visited
+   	- command coverage
+   	- function hitted
+
+_____________________________________________
+
+3. Test  
+	 
+
+	#Test 1 : downloading package
+	
+	   ####bash test:	
+
+		terminal 1:
+			./scripts/list_package.sh bash
+			$ bash_4.3
+			..
+			..	
+			//ignore this part if you have allready downloaded 
+			$ scala TakeCare -p /home/laserone/Desktop/Intel_pt/Tesi/parser_scala_tesiv2/softbin/bash_4.3/bash2 -c bash2 -f ./input_outputs/function_list.txt
+
+		terminal 2:
+			$ sudo ./scripts/trace_without_filter.sh .... ....
+
+		terminal 3:
+			$ sudo strace -p 20951 (on other terminal)
+
+		terminal 4:
+			copy and paste to test.
+			
+				echo "echo ciao" > /proc/20951/fd/0; echo "exit" > /proc/20951/fd/0
+				echo "ping" > /proc/20951/fd/0; echo "exit" > /proc/20951/fd/0
+				echo "ls" > /proc/20951/fd/0; echo "exit" > /proc/20951/fd/0
+				//till now no basic_block_diff hitted.
+				
+				echo "du" > /proc/20951/fd/0; echo "exit" > /proc/20951/fd/0
+				//now we see the basic_block_diff hitted and how many times.
+			
+
+
+	   ####emacs24 test :
+	   	//no modified function dected,because also data segment was modified
+		terminal 1:
+			./scripts/list_package.sh bash
+			$ emacs24
+			..
+			..	
+			//the preconfig fails, because some dependencies are missing. we must resolve them by manual-mode
+			
+			//next when all has done, we must change the command from:
+			  scala TakeCare -p /home/laserone/Desktop/Intel_pt/Tesi/parser_scala_tesiv2/softbin/emacs24_24.3/emacs242 -c emacs242 -f ./input_outputs/function_list.txt
+			to:
+			  scala TakeCare -p /home/laserone/Desktop/Intel_pt/Tesi/parser_scala_tesiv2/softbin/emacs24_24.3/2/src/emacs -c emacs -f ./input_outputs/function_list.txt
+		terminal 2:
+			$ sudo ./scripts/trace_without_filter.sh .... ....  
+
+
+
+	   ####evince test :
+	  
+		terminal 1:
+			./scripts/list_package.sh evince
+			$ evince_3.10.3
+			..
+			..	
+			//the preconfig fails, because some dependencies are missing. we must resolve them by manual-mode
+				for some reason we need to do this
+				ln -s /usr/bin/automake-1.15 /usr/bin/automake-1.14
+				ln -s /usr/bin/aclocal-1.15 /usr/bin/aclocal-1.14				
+
+			//next, launch again:
+			./scripts/list_package.sh evince
+			..
+			
+			//go to evince_3.10.3./2 and digit "sudo make install".
+			//next when all has done, we must change the command from:
+				scala TakeCare -p /home/laserone/Desktop/Intel_pt/Tesi/parser_scala_tesiv2/softbin/evince_3.10.3/evince2 -c evince2 -f ./input_outputs/function_list.txt 
+			to:
+			  scala TakeCare -p /home/laserone/Desktop/Intel_pt/Tesi/parser_scala_tesiv2/softbin/evince_3.10.3/2/shell/.libs/evince -c evince -f ./input_outputs/function_list.txt
+		terminal 2:
+			$ sudo ./scripts/trace_without_filter.sh .... ....  
+
+
+
+
+	#Test 2 : trace firefox
+
+		terminal 1:
+			$ scala TakeCare -p /usr/lib/firefox/firefox -c firefox
+		terminal 2:
+			$ sudo ./scripts/trace.sh .... ....
+	
+	#Test 3 : manual mode
+		
+		terminal 1:
+			$ scala TakeCare -p $PWD/test/1 -c 1
+			.. 
+			..	//follow the instruction on screen
+			..
+
+______________________________________
+
+4. Perf - Intel pt
+
+	Intel PT can be used in 2 modes:
+		full-trace mode
+		snapshot mode
+
+	Full-trace mode traces continuously e.g.
+
+		perf record -e intel_pt//u uname
+
+	Snapshot mode captures the available data when a signal is sent e.g.
+
+		perf record -v -e intel_pt//u -S ./loopy 1000000000 &
+		[1] 11435
+		kill -USR2 11435
+		Recording AUX area tracing snapshot
+
+	Note that the signal sent is SIGUSR2.
+	Note that "Recording AUX area tracing snapshot" is displayed because the -v
+	option is used.
+
+	The 2 modes cannot be used together.
+
+
+	new snapshot option
+	-------------------
+	The difference between full trace and snapshot from the kernel's perspective is
+	that in full trace we don't overwrite trace data that the user hasn't collected
+	yet (and indicated that by advancing aux_tail), whereas in snapshot mode we let
+	the trace run and overwrite older data in the buffer so that whenever something
+	interesting happens, we can stop it and grab a snapshot of what was going on
+	around that interesting moment.
+
+
+
+	new auxtrace mmap size option
+	---------------------------
+
+	Intel PT buffer size is specified by an addition to the -m option e.g.
+
+		-m,16
+
+	selects a buffer size of 16 pages i.e. 64KiB.
+
+	Note that the existing functionality of -m is unchanged.  The auxtrace mmap size
+	is specified by the optional addition of a comma and the value.
+
+	The default auxtrace mmap size for Intel PT is 4MiB/page_size for privileged users
+	(or if /proc/sys/kernel/perf_event_paranoid < 0), 128KiB for unprivileged users.
+	If an unprivileged user does not specify mmap pages, the mmap pages will be
+	reduced from the default 512KiB/page_size to 256KiB/page_size, otherwise the
+	user is likely to get an error as they exceed their mlock limit (Max locked
+	memory as shown in /proc/self/limits).  Note that perf does not count the first
+	512KiB (actually /proc/sys/kernel/perf_event_mlock_kb minus 1 page) per cpu
+	against the mlock limit so an unprivileged user is allowed 512KiB per cpu plus
+	their mlock limit (which defaults to 64KiB but is not multiplied by the number
+	of cpus).
+
+	In full-trace mode, powers of two are allowed for buffer size, with a minimum
+	size of 2 pages.  In snapshot mode, it is the same but the minimum size is
+	1 page.
+
+	The mmap size and auxtrace mmap size are displayed if the -vv option is used e.g.
+
+		mmap length 528384
+		auxtrace mmap length 4198400
+
+
+
+
+	Buffer handling
+	---------------
+
+	There may be buffer limitations (i.e. single ToPa entry) which means that actual
+	buffer sizes are limited to powers of 2 up to 4MiB (MAX_ORDER).  In order to
+	provide other sizes, and in particular an arbitrarily large size, multiple
+	buffers are logically concatenated.  However an interrupt must be used to switch
+	between buffers.  That has two potential problems:
+		a) the interrupt may not be handled in time so that the current buffer
+		becomes full and some trace data is lost.
+		b) the interrupts may slow the system and affect the performance
+		results.
+
+	If trace data is lost, the driver sets 'truncated' in the PERF_RECORD_AUX event
+	which the tools report as an error.
+
+	In full-trace mode, the driver waits for data to be copied out before allowing
+	the (logical) buffer to wrap-around.  If data is not copied out quickly enough,
+	again 'truncated' is set in the PERF_RECORD_AUX event.  If the driver has to
+	wait, the intel_pt event gets disabled.  Because it is difficult to know when
+	that happens, perf tools always re-enable the intel_pt event after copying out
+	data.
+
+
+
+	perf record modes (nothing new here)
+	------------------------------------
+
+	perf record essentially operates in one of three modes:
+		per thread
+		per cpu
+		workload only
+
+	"per thread" mode is selected by -t or by --per-thread (with -p or -u or just a
+	workload).
+	"per cpu" is selected by -C or -a.
+	"workload only" mode is selected by not using the other options but providing a
+	command to run (i.e. the workload).
+
+	In per-thread mode an exact list of threads is traced.  There is no inheritance.
+	Each thread has its own event buffer.
+
+	In per-cpu mode all processes (or processes from the selected cgroup i.e. -G
+	option, or processes selected with -p or -u) are traced.  Each cpu has its own
+	buffer. Inheritance is allowed.
+
+	In workload-only mode, the workload is traced but with per-cpu buffers.
+	Inheritance is allowed.  Note that you can now trace a workload in per-thread
+	mode by using the --per-thread option.
+

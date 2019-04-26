@@ -1,0 +1,1 @@
+<execute_pipeline> <(command,> <asynchronous,> <static> <struct> <{> <redir_open> <(filename,> <flags,> <mode,> <ri)> <shell_expand_word_list> <(tlist,> <eflags)> <decode_prompt_string> <(string)> <decode_prompt_string> <(string)> <initialize_shell_variables> <(env,> <privmod> <popd_builtin> <(list)>
